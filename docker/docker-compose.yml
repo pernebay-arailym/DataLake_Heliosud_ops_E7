@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # --- SeaweedFS S3-Compatible Object Storage ---
+  storage:
+    image: chrislusf/seaweedfs:latest
+    container_name: heliosud-storage
+    ports:
+      - "8333:8333"
+      - "9333:9333"
+      - "8888:8888"
+    command: "server -dir=/data -s3 -s3.port=8333"
+    volumes:
+      - storage_data:/data
+    networks:
+      - heliosud-net
+
+  # --- Real-Time Streaming Broker (Redpanda - Kafka API) ---
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.5
+    container_name: heliosud-redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --node-id 0
+      - --check=false
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    networks:
+      - heliosud-net
+
+volumes:
+  storage_data:
+  redpanda_data:
+
+networks:
+  heliosud-net:
+    driver: bridge
