@@ -79,3 +79,20 @@ Standardized partition patterns are enforced across all zones to optimize query 
 - **Contracts:** `raw/contracts/year=<YYYY>/month=<MM>/`
 - **Weather Data:** `raw/weather/site_id=<site>/year=<YYYY>/month=<MM>/day=<DD>/`
 - **Intervention Reports:** `raw/interventions/site_id=<site>/year=<YYYY>/`
+
+## 5. Real-Time Telemetry Ingestion & Troubleshooting (Section 3.5)
+
+### 5.1 Dependency Resolution (Python 3.11 Compatibility)
+During initial execution of `generation/simulateur_onduleurs.py` with the `--sink kafka` option, an `ImportError` occurred due to deprecated module paths in legacy `kafka-python`:
+`ImportError: cannot import name 'NoBrokersAvailable' from 'kafka.errors'`
+
+**Resolution:** Replaced legacy `kafka-python` package with `kafka-python-ng` (v2.2.3+), which provides full Python 3.11+ support and compatibility with Redpanda's Kafka API endpoint.
+
+### 5.2 Simulator Parameters & Execution Test
+- **Command:** `python generation/simulateur_onduleurs.py --sites 2 --onduleurs-par-site 3 --minutes 2 --intervalle 0 --sink kafka --bootstrap localhost:9092 --topic heliosud-telemetry`
+- **Verification:** 12 telemetry messages emitted across 6 simulated inverters directly into Redpanda on port `9092`.
+
+### 5.3 Multi-Vendor Schema Heterogeneity
+The ingestion layer natively accepts heterogeneous JSON streams from two distinct hardware manufacturers:
+- **SolarTech (Odd Site IDs):** Uses camelCase field notation (`device_id`, `p_ac_w`, `v_dc`, `temp_c`), UTC ISO-8601 timestamps (`ts`), and string status codes.
+- **Voltaris (Even Site IDs):** Uses nested JSON objects (`inverter: {id, model}`), snake_case metrics (`power_kw`, `dc_voltage_v`), local timestamps, and integer fault code arrays.
